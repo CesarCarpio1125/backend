@@ -1,6 +1,6 @@
 FROM php:8.2-cli
 
-# Instalar dependencias del sistema
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -10,23 +10,29 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     && docker-php-ext-install pdo pdo_mysql zip
 
-# Instalar Composer
+# Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Directorio de trabajo
+# Set working directory
 WORKDIR /var/www
 
-# Copiar proyecto
+# Copy only composer files first to leverage Docker cache
+COPY composer.json composer.lock* ./
+
+# Install dependencies (don't run scripts or autoloader yet)
+RUN composer install --no-scripts --no-autoloader --no-dev
+
+# Copy the rest of the application
 COPY . .
 
-# Instalar dependencias Laravel
-RUN composer install --no-dev --optimize-autoloader
+# Generate optimized autoloader
+RUN composer dump-autoload --optimize
 
-# Permisos
+# Set permissions
 RUN chmod -R 777 storage bootstrap/cache
 
-# Puerto (Render usa 10000)
+# Expose port 10000 (used by Render)
 EXPOSE 10000
 
-# Comando de arranque
+# Start the application
 CMD php artisan serve --host=0.0.0.0 --port=10000
