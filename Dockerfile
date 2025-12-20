@@ -12,12 +12,12 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install \
     pdo \
     pdo_mysql \
-    zip \
-    openssl
+    zip
 
-# Composer
+# Instalar Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Directorio de trabajo
 WORKDIR /var/www
 
 # Copiar proyecto
@@ -29,6 +29,8 @@ RUN composer install --no-dev --no-interaction --optimize-autoloader
 # Permisos
 RUN chmod -R 775 storage bootstrap/cache
 
+# Puerto Render
 EXPOSE 10000
 
+# Arranque
 CMD php artisan serve --host=0.0.0.0 --port=10000
