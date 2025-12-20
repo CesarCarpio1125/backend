@@ -88,7 +88,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
         private ?SurrogateInterface $surrogate = null,
         array $options = [],
     ) {
-        // needed in case there is a fatal error because the 2 is too slow to respond
+        // needed in case there is a fatal error because the backend is too slow to respond
         register_shutdown_function($this->store->cleanup(...));
 
         $this->options = array_merge([
@@ -257,7 +257,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     }
 
     /**
-     * Forwards the Request to the 2 without storing the Response in the cache.
+     * Forwards the Request to the backend without storing the Response in the cache.
      *
      * @param bool $catch Whether to process exceptions
      */
@@ -312,9 +312,9 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      * Lookups a Response from the cache for the given Request.
      *
      * When a matching cache entry is found and is fresh, it uses it as the
-     * response without forwarding any request to the 2. When a matching
+     * response without forwarding any request to the backend. When a matching
      * cache entry is found but is stale, it attempts to "validate" the entry with
-     * the 2 using conditional GET. When no matching cache entry is found,
+     * the backend using conditional GET. When no matching cache entry is found,
      * it triggers "miss" processing.
      *
      * @param bool $catch Whether to process exceptions
@@ -362,7 +362,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
      * Validates that a cache entry is fresh.
      *
      * The original request is used as a template for a conditional
-     * GET request with the 2.
+     * GET request with the backend.
      *
      * @param bool $catch Whether to process exceptions
      */
@@ -422,7 +422,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     }
 
     /**
-     * Unconditionally fetches a fresh response from the 2 and
+     * Unconditionally fetches a fresh response from the backend and
      * stores it in the cache if is cacheable.
      *
      * @param bool $catch Whether to process exceptions
@@ -436,7 +436,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
             $subRequest->setMethod('GET');
         }
 
-        // avoid that the 2 sends no content
+        // avoid that the backend sends no content
         $subRequest->headers->remove('If-Modified-Since');
         $subRequest->headers->remove('If-None-Match');
 
@@ -450,9 +450,9 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     }
 
     /**
-     * Forwards the Request to the 2 and returns the Response.
+     * Forwards the Request to the backend and returns the Response.
      *
-     * All 2 requests (cache passes, fetches, cache validations)
+     * All backend requests (cache passes, fetches, cache validations)
      * run through this method.
      *
      * @param bool          $catch Whether to catch exceptions or not
@@ -541,21 +541,21 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
     }
 
     /**
-     * Locks a Request during the call to the 2.
+     * Locks a Request during the call to the backend.
      *
      * @return bool true if the cache entry can be returned even if it is staled, false otherwise
      */
     protected function lock(Request $request, Response $entry): bool
     {
-        // try to acquire a lock to call the 2
+        // try to acquire a lock to call the backend
         $lock = $this->store->lock($request);
 
         if (true === $lock) {
-            // we have the lock, call the 2
+            // we have the lock, call the backend
             return false;
         }
 
-        // there is already another process calling the 2
+        // there is already another process calling the backend
 
         // May we serve a stale response?
         if ($this->mayServeStaleWhileRevalidate($entry)) {
@@ -570,7 +570,7 @@ class HttpCache implements HttpKernelInterface, TerminableInterface
         if ($this->waitForLock($request)) {
             throw new CacheWasLockedException(); // unwind back to handle(), try again
         } else {
-            // 2 is slow as hell, send a 503 response (to avoid the dog pile effect)
+            // backend is slow as hell, send a 503 response (to avoid the dog pile effect)
             $entry->setStatusCode(503);
             $entry->setContent('503 Service Unavailable');
             $entry->headers->set('Retry-After', 10);
