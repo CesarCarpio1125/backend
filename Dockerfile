@@ -1,6 +1,14 @@
-FROM php:8.2-cli
+# Stage 1: Composer dependencies
+FROM composer:2 as vendor
 
-# Dependencias del sistema
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-interaction --optimize-autoloader --no-scripts
+
+# Stage 2: Application
+FROM php:8.4-cli
+
+# System dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -14,23 +22,34 @@ RUN apt-get update && apt-get install -y \
     pdo_mysql \
     zip
 
-# Instalar Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Directorio de trabajo
+# Set working directory
 WORKDIR /var/www
 
-# Copiar proyecto
+# Create necessary directories and set permissions
+RUN mkdir -p storage/framework/{sessions,views,cache} \
+    && mkdir -p storage/logs \
+    && mkdir -p bootstrap/cache \
+    && chmod -R 775 storage bootstrap/cache
+
+# Copy application files
 COPY . .
 
-# Instalar dependencias Laravel
-RUN composer install --no-dev --no-interaction --optimize-autoloader
+# Copy vendor directory from the vendor stage
+COPY --from=vendor /app/vendor/ /var/www/vendor/
 
-# Permisos
-RUN chmod -R 775 storage bootstrap/cache
+# Create .env file if it doesn't exist and generate key if needed
+RUN if [ ! -f .env ]; then \
+        touch .env && \
+        echo "APP_NAME=Laravel" >> .env && \
+        echo "APP_ENV=local" >> .env && \
+        echo "APP_KEY=" >> .env && \
+        echo "APP_DEBUG=true" >> .env && \
+        echo "APP_URL=http://localhost" >> .env; \
+    fi && \
+    php artisan key:generate
 
-# Puerto Render
+# Expose port
 EXPOSE 10000
 
-# Arranque
+# Start the application
 CMD php artisan serve --host=0.0.0.0 --port=10000
