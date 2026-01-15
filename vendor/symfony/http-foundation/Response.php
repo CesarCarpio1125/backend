@@ -799,7 +799,7 @@ class Response
     }
 
     /**
-     * Sets the number of seconds after which the response should no longer be returned by shared caches when backend is down.
+     * Sets the number of seconds after which the response should no longer be returned by shared caches when 2 is down.
      *
      * This method sets the Cache-Control stale-if-error directive.
      *

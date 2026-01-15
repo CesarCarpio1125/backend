@@ -14,13 +14,17 @@ class SendInquiry extends Mailable
     use Queueable, SerializesModels;
 
     public $data;
+    public $attachmentPath;
+    public $originalName;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($data)
+    public function __construct($data, $attachmentPath = null, $originalName = null)
     {
         $this->data = $data;
+        $this->attachmentPath = $attachmentPath;
+        $this->originalName = $originalName ?? 'documento.pdf';
     }
 
     /**
@@ -29,7 +33,7 @@ class SendInquiry extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Send Inquiry',
+            subject: 'Innosure - Documento adjunto',
         );
     }
 
@@ -39,8 +43,8 @@ class SendInquiry extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.inquiry',
-            with: ['data' => $this->data]
+            view: 'emails.simple',  // Vista simple sin datos del formulario
+            with: []
         );
     }
 
@@ -51,6 +55,14 @@ class SendInquiry extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        if (!$this->attachmentPath || !file_exists($this->attachmentPath)) {
+            return [];
+        }
+
+        return [
+            \Illuminate\Mail\Mailables\Attachment::fromPath($this->attachmentPath)
+                ->as($this->originalName)
+                ->withMime('application/pdf')
+        ];
     }
 }
