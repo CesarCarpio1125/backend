@@ -148,6 +148,7 @@ class ChunkedUploadController extends Controller
         $finalFullPath = Storage::path($finalPath);
         $chunks = [];
         $finalFile = null;
+        $chunkFile = null;
 
         try {
             // Validate chunks directory exists
@@ -186,20 +187,26 @@ class ChunkedUploadController extends Controller
                     throw new \Exception("Could not read chunk: {$chunk}");
                 }
 
-                try {
-                    // Append chunk to final file
-                    while (!feof($chunkFile)) {
-                        $chunkContent = fread($chunkFile, 8192);
-                        if ($chunkContent === false) {
-                            throw new \Exception('Error reading chunk content');
-                        }
-                        if (fwrite($finalFile, $chunkContent) === false) {
-                            throw new \Exception('Error writing to final file');
-                        }
+                // Append chunk to final file
+                while (!feof($chunkFile)) {
+                    $chunkContent = fread($chunkFile, 8192);
+                    if ($chunkContent === false) {
+                        throw new \Exception('Error reading chunk content');
                     }
-                } finally {
-                    fclose($chunkFile);
+                    if (fwrite($finalFile, $chunkContent) === false) {
+                        throw new \Exception('Error writing to final file');
+                    }
                 }
+                
+                // Close the chunk file handle
+                fclose($chunkFile);
+                $chunkFile = null;
+            }
+
+            // Close the final file handle
+            if (is_resource($finalFile)) {
+                fclose($finalFile);
+                $finalFile = null;
             }
 
             // Verify the final file was created and has content
@@ -241,14 +248,17 @@ class ChunkedUploadController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // Clean up in case of error
+            // Clean up file handles
+            if (is_resource($chunkFile)) {
+                fclose($chunkFile);
+            }
             if (is_resource($finalFile)) {
                 fclose($finalFile);
             }
 
             // Delete the final file if it was created
             if (isset($finalFullPath) && file_exists($finalFullPath)) {
-                unlink($finalFullPath);
+                @unlink($finalFullPath);
             }
 
             // Clean up chunks
@@ -265,7 +275,15 @@ class ChunkedUploadController extends Controller
                 'final_path' => $finalPath ?? null
             ]);
 
-            throw new \Exception('Failed to combine chunks: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to combine chunks: ' . $e->getMessage(),
+                'error' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ] : 'Internal server error'
+            ], 500);
         }
     }
 }
