@@ -14,7 +14,7 @@ class ChunkedUploadController extends Controller
 {
     // Maximum file size in bytes (50MB)
     const MAX_FILE_SIZE = 50 * 1024 * 1024;
-    
+
     // Allowed file types
     const ALLOWED_MIME_TYPES = [
         'application/pdf',
@@ -132,7 +132,7 @@ class ChunkedUploadController extends Controller
 
     /**
      * Combine uploaded chunks into a single file
-     * 
+     *
      * @param string $identifier Unique identifier for this upload
      * @param string $filename Final filename
      * @param string $originalName Original filename from the client
@@ -181,7 +181,7 @@ class ChunkedUploadController extends Controller
             foreach ($chunks as $chunk) {
                 $chunkPath = Storage::path($chunk);
                 $chunkFile = fopen($chunkPath, 'rb');
-                
+
                 if ($chunkFile === false) {
                     throw new \Exception("Could not read chunk: {$chunk}");
                 }
@@ -223,6 +223,12 @@ class ChunkedUploadController extends Controller
                 'path' => $finalPath
             ]);
 
+            // Create storage link if it doesn't exist
+            $publicPath = public_path('storage');
+            if (!file_exists($publicPath)) {
+                \Artisan::call('storage:link');
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'File uploaded successfully',
@@ -230,7 +236,8 @@ class ChunkedUploadController extends Controller
                 'original_name' => $originalName,
                 'size' => $fileSize,
                 'mime_type' => $mimeType,
-                'url' => Storage::url($finalPath)
+                'path' => 'storage/' . $filename,
+                'url' => asset('storage/' . $filename)
             ]);
 
         } catch (\Exception $e) {
@@ -238,10 +245,15 @@ class ChunkedUploadController extends Controller
             if (is_resource($finalFile)) {
                 fclose($finalFile);
             }
-            
+
             // Delete the final file if it was created
-            if (file_exists($finalFullPath)) {
+            if (isset($finalFullPath) && file_exists($finalFullPath)) {
                 unlink($finalFullPath);
+            }
+
+            // Clean up chunks
+            if (isset($chunkDir) && Storage::exists($chunkDir)) {
+                Storage::deleteDirectory($chunkDir);
             }
 
             // Log the error
@@ -254,56 +266,6 @@ class ChunkedUploadController extends Controller
             ]);
 
             throw new \Exception('Failed to combine chunks: ' . $e->getMessage());
-        }
-                // Combinar los fragmentos
-                foreach ($chunks as $chunk) {
-                    $chunkContent = Storage::get($chunk);
-                    if (fwrite($finalFile, $chunkContent) === false) {
-                        throw new \Exception("Failed to write chunk: {$chunk}");
-                    }
-                }
-            } finally {
-                fclose($finalFile);
-            }
-
-            // Verificar que el archivo final existe
-            if (!Storage::exists($finalPath)) {
-                throw new \Exception('Final file was not created');
-            }
-
-            // Limpiar fragmentos
-            Storage::deleteDirectory($chunkDir);
-
-            // Crear enlace simbólico si no existe
-            $publicPath = public_path('storage');
-            if (!file_exists($publicPath)) {
-                \Artisan::call('storage:link');
-            }
-
-            return response()->json([
-                'success' => true,
-                'path' => 'storage/' . $filename,
-                'url' => asset('storage/' . $filename),
-                'original_name' => $originalName,
-                'size' => Storage::size($finalPath),
-                'message' => 'File uploaded and combined successfully'
-            ]);
-
-        } catch (\Exception $e) {
-            // Limpiar en caso de error
-            if (isset($chunkDir)) {
-                Storage::deleteDirectory($chunkDir);
-            }
-            if (isset($finalPath) && Storage::exists($finalPath)) {
-                Storage::delete($finalPath);
-            }
-
-            Log::error('Combine chunks error: ' . $e->getMessage(), [
-                'identifier' => $identifier,
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            throw $e;
         }
     }
 }
