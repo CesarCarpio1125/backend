@@ -7,72 +7,64 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\UploadedFile;
 
 class ChunkedUploadController extends Controller
 {
     public function uploadChunk(Request $request)
     {
         try {
-            $request->validate([
+            // Validación de campos
+            $validated = $request->validate([
                 'file' => 'required|file',
-                'chunkNumber' => 'required|numeric',
-                'totalChunks' => 'required|numeric',
-                'originalName' => 'required|string',
-                'totalSize' => 'required|numeric',
-                'identifier' => 'required|string',
-                'filename' => 'nullable|string',
+                'chunkNumber' => 'required|integer|min:1',
+                'totalChunks' => 'required|integer|min:1',
+                'originalName' => 'required|string|max:255',
+                'totalSize' => 'required|integer|min:1',
+                'identifier' => 'required|string|max:255',
+                'filename' => 'required|string|max:255',
+                'fileType' => 'required|string|max:100',
             ]);
 
             $file = $request->file('file');
             $chunkNumber = (int)$request->input('chunkNumber');
             $totalChunks = (int)$request->input('totalChunks');
-            $originalName = $request->input('originalName');
-            $totalSize = (int)$request->input('totalSize');
             $identifier = $request->input('identifier');
-            $filename = $request->input('filename', $identifier . '.pdf');
+            $filename = $request->input('filename');
 
             // Directorio temporal para los fragmentos
             $chunkDir = 'chunks/' . $identifier;
-            $fullChunkDir = storage_path('app/' . $chunkDir);
-            
-            // Asegurarse de que el directorio existe
-            if (!file_exists($fullChunkDir)) {
-                if (!mkdir($fullChunkDir, 0755, true)) {
-                    throw new \Exception('No se pudo crear el directorio temporal');
-                }
+            $chunkPath = $chunkDir . '/' . $chunkNumber;
+
+            // Asegurar que el directorio existe
+            if (!Storage::exists($chunkDir)) {
+                Storage::makeDirectory($chunkDir, 0755, true);
             }
 
             // Guardar el fragmento
-            $chunkPath = $fullChunkDir . '/' . $chunkNumber;
-            
-            // Mover el archivo subido a la ubicación temporal
-            if (!$file->move($fullChunkDir, $chunkNumber)) {
-                throw new \Exception('Error al guardar el fragmento');
-            }
+            $file->storeAs($chunkDir, $chunkNumber);
 
-            // Si es el último fragmento, combinar los archivos
-            if ($chunkNumber == $totalChunks - 1) {
-                return $this->combineChunks($identifier, $filename, $originalName);
+            // Si es el último fragmento, combinar
+            if ($chunkNumber === $totalChunks) {
+                return $this->combineChunks($identifier, $filename, $request->input('originalName'));
             }
 
             return response()->json([
                 'success' => true,
-                'chunk' => $chunkNumber,
-                'message' => 'Fragmento subido correctamente',
-                'chunk_number' => $chunkNumber,
-                'total_chunks' => $totalChunks
+                'message' => 'Chunk uploaded successfully',
+                'chunkNumber' => $chunkNumber,
+                'totalChunks' => $totalChunks
             ]);
+
         } catch (\Exception $e) {
-            Log::error('Error en uploadChunk: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
+            Log::error('Upload chunk error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->except(['file']) // Excluir el archivo del log
             ]);
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error al procesar el fragmento: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'trace' => env('APP_DEBUG') ? $e->getTraceAsString() : null
+                'message' => 'Error processing chunk: ' . $e->getMessage(),
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
@@ -81,126 +73,80 @@ class ChunkedUploadController extends Controller
     {
         try {
             $chunkDir = 'chunks/' . $identifier;
-            $fullChunkDir = storage_path('app/' . $chunkDir);
-            
-            // Obtener la lista de fragmentos
-            $chunks = [];
-            if (is_dir($fullChunkDir)) {
-                $chunks = array_diff(scandir($fullChunkDir), ['.', '..']);
-                natsort($chunks);
-                $chunks = array_values($chunks);
-            }
-            
-            if (empty($chunks)) {
-                throw new \Exception('No se encontraron fragmentos para combinar');
+            $finalDir = 'public/uploads';
+            $finalPath = $finalDir . '/' . $filename;
+
+            // Asegurar que el directorio de destino existe
+            if (!Storage::exists($finalDir)) {
+                Storage::makeDirectory($finalDir, 0755, true);
             }
 
-            // Crear directorio de destino si no existe
-            $finalDir = 'public/uploads';
-            $fullFinalDir = storage_path('app/' . $finalDir);
-            
-            if (!file_exists($fullFinalDir)) {
-                if (!mkdir($fullFinalDir, 0755, true)) {
-                    throw new \Exception('No se pudo crear el directorio de destino');
-                }
+            // Obtener y ordenar los fragmentos
+            $chunks = Storage::files($chunkDir);
+            natsort($chunks);
+
+            if (empty($chunks)) {
+                throw new \Exception('No chunks found to combine');
             }
 
             // Crear el archivo final
-            $finalPath = $finalDir . '/' . $filename;
-            $finalFullPath = storage_path('app/' . $finalPath);
-            
-            // Abrir el archivo final para escritura
+            $finalFullPath = Storage::path($finalPath);
             $finalFile = fopen($finalFullPath, 'wb');
+
             if ($finalFile === false) {
-                throw new \Exception('No se pudo crear el archivo final');
+                throw new \Exception('Could not create final file');
             }
 
             try {
                 // Combinar los fragmentos
                 foreach ($chunks as $chunk) {
-                    $chunkPath = $fullChunkDir . '/' . $chunk;
-                    $chunkContent = file_get_contents($chunkPath);
-                    if ($chunkContent === false) {
-                        throw new \Exception("Error al leer el fragmento: {$chunk}");
-                    }
-                    
+                    $chunkContent = Storage::get($chunk);
                     if (fwrite($finalFile, $chunkContent) === false) {
-                        throw new \Exception('Error al escribir en el archivo final');
+                        throw new \Exception("Failed to write chunk: {$chunk}");
                     }
                 }
             } finally {
                 fclose($finalFile);
             }
 
-            // Verificar que el archivo final existe y tiene contenido
-            if (!file_exists($finalFullPath) || filesize($finalFullPath) === 0) {
-                throw new \Exception('El archivo final no se creó correctamente');
+            // Verificar que el archivo final existe
+            if (!Storage::exists($finalPath)) {
+                throw new \Exception('Final file was not created');
             }
 
-            // Eliminar los fragmentos
-            $this->deleteDirectory($fullChunkDir);
+            // Limpiar fragmentos
+            Storage::deleteDirectory($chunkDir);
 
-            // Devolver la ruta relativa sin 'public/'
-            $relativePath = 'uploads/' . $filename;
-            
+            // Crear enlace simbólico si no existe
+            $publicPath = public_path('storage');
+            if (!file_exists($publicPath)) {
+                \Artisan::call('storage:link');
+            }
+
             return response()->json([
                 'success' => true,
-                'path' => $relativePath, // Ruta relativa sin 'public/'
-                'url' => asset('storage/' . $relativePath),
+                'path' => 'storage/' . $filename,
+                'url' => asset('storage/' . $filename),
                 'original_name' => $originalName,
-                'size' => filesize($finalFullPath),
-                'message' => 'Archivo subido y combinado correctamente'
+                'size' => Storage::size($finalPath),
+                'message' => 'File uploaded and combined successfully'
             ]);
-            
+
         } catch (\Exception $e) {
-            Log::error('Error en combineChunks: ' . $e->getMessage(), [
+            // Limpiar en caso de error
+            if (isset($chunkDir)) {
+                Storage::deleteDirectory($chunkDir);
+            }
+            if (isset($finalPath) && Storage::exists($finalPath)) {
+                Storage::delete($finalPath);
+            }
+
+            Log::error('Combine chunks error: ' . $e->getMessage(), [
                 'identifier' => $identifier,
                 'trace' => $e->getTraceAsString()
             ]);
-            
-            // Limpiar archivos temporales en caso de error
-            if (isset($fullChunkDir) && is_dir($fullChunkDir)) {
-                $this->deleteDirectory($fullChunkDir);
-            }
-            if (isset($finalFullPath) && file_exists($finalFullPath)) {
-                @unlink($finalFullPath);
-            }
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al combinar los fragmentos: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'trace' => env('APP_DEBUG') ? $e->getTraceAsString() : null
-            ], 500);
+
+            throw $e;
         }
-    }
-
-    /**
-     * Elimina un directorio y su contenido de forma recursiva
-     *
-     * @param string $dir Ruta del directorio a eliminar
-     * @return bool
-     */
-    private function deleteDirectory(string $dir): bool
-    {
-        if (!file_exists($dir)) {
-            return true;
-        }
-
-        if (!is_dir($dir)) {
-            return unlink($dir);
-        }
-
-        foreach (scandir($dir) as $item) {
-            if ($item == '.' || $item == '..') {
-                continue;
-            }
-
-            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
-                return false;
-            }
-        }
-
-        return rmdir($dir);
     }
 }
