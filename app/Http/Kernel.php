@@ -14,8 +14,8 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
-        // Manejo de CORS (nativo en Laravel 8+)
-        \Illuminate\Http\Middleware\HandleCors::class,
+        // CORS middleware
+        \App\Http\Middleware\CorsMiddleware::class,
 
         // Tamaño de la solicitud
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
@@ -43,6 +43,8 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            // CORS middleware for API routes
+            \App\Http\Middleware\CorsMiddleware::class,
             // Throttling: 60 requests per minute
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,

@@ -1,27 +1,34 @@
 <?php
 
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'upload', 'chunk-upload', 'send-email'],
+    /*
+    |--------------------------------------------------------------------------
+    | Cross-Origin Resource Sharing (CORS) Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Aquí puedes configurar las opciones de CORS para tu aplicación.
+    |
+    */
+
+    'paths' => ['*'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['*'], // Allow all origins for now, you can restrict this in production
-    'allowed_origins_patterns' => [
-        'http://localhost:[0-9]+',
-        'https://.+\.onrender\.com',
-    ],
+    'allowed_origins' => ['*'],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
-    'exposed_headers' => [],
-    'max_age' => 0,
-    'supports_credentials' => true,
     'exposed_headers' => [
+        'Authorization',
+        'X-CSRF-TOKEN',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Origin',
         'Cache-Control',
         'Content-Language',
-        'Content-Type',
         'Expires',
         'Last-Modified',
         'Pragma',
-        'X-Requested-With'
+        'X-XSRF-TOKEN'
     ],
-    'max_age' => 60 * 60 * 24,
+    'max_age' => 0,
     'supports_credentials' => true,
 ];
