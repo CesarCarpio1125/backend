@@ -43,9 +43,7 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
-            // CORS middleware for API routes
             \App\Http\Middleware\CorsMiddleware::class,
-            // Throttling: 60 requests per minute
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
