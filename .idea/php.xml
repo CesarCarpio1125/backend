@@ -24,7 +24,6 @@
       <path value="$PROJECT_DIR$/vendor/graham-campbell/result-type" />
       <path value="$PROJECT_DIR$/vendor/tijsverkoyen/css-to-inline-styles" />
       <path value="$PROJECT_DIR$/vendor/dragonmantank/cron-expression" />
-      <path value="$PROJECT_DIR$/vendor/laravel/sanctum" />
       <path value="$PROJECT_DIR$/vendor/composer" />
       <path value="$PROJECT_DIR$/vendor/laravel/tinker" />
       <path value="$PROJECT_DIR$/vendor/laravel/framework" />
@@ -242,6 +241,7 @@
       <path value="$PROJECT_DIR$/temp-laravel/vendor/dragonmantank/cron-expression" />
       <path value="$PROJECT_DIR$/temp-laravel/vendor/tijsverkoyen/css-to-inline-styles" />
       <path value="$PROJECT_DIR$/temp-laravel/vendor/graham-campbell/result-type" />
+      <path value="$PROJECT_DIR$/vendor/laravel/sanctum" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2">

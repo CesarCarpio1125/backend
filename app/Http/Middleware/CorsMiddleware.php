@@ -8,12 +8,21 @@ class CorsMiddleware
 {
     public function handle($request, Closure $next)
     {
-        $response = $next($request);
+        $requestHeaders = $request->headers->get('Access-Control-Request-Headers');
+        $allowHeaders = $requestHeaders ?: 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin';
 
-        $response->headers->set('Access-Control-Allow-Origin', '*');
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN');
-        $response->headers->set('Access-Control-Allow-Credentials', 'true');
+        $headers = [
+            'Access-Control-Allow-Origin' => '*',
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'Access-Control-Allow-Headers' => $allowHeaders,
+        ];
+
+        if ($request->isMethod('OPTIONS')) {
+            return response('', 204)->withHeaders($headers);
+        }
+
+        $response = $next($request);
+        $response->headers->add($headers);
 
         return $response;
     }

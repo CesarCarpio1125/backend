@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\EmailController;
 
 Route::get('/health', function () {
     return response()->json([
@@ -20,3 +21,5 @@ Route::post('/test', function () {
         'environment' => app()->environment()
     ]);
 })->name('test');
+
+Route::post('/send-email', [EmailController::class, 'sendInquiry']);
