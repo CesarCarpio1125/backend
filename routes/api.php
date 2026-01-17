@@ -18,7 +18,21 @@ Route::get('/health', function() {
     ]);
 });
 
-// API Routes
+// Endpoint de prueba
+Route::post('/test-endpoint', function() {
+    return response()->json([
+        'status' => 'success',
+        'message' => '¡Endpoint de prueba funcionando!',
+        'data' => request()->all(),
+        'server_time' => now()->toISOString(),
+        'received_headers' => [
+            'content-type' => request()->header('Content-Type'),
+            'accept' => request()->header('Accept')
+        ]
+    ]);
+});
+
+// Grupo de rutas API
 Route::prefix('api')->group(function () {
     // Email routes
     Route::post('send-email', [EmailController::class, 'sendInquiry']);
