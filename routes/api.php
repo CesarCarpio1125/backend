@@ -3,7 +3,18 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\EmailController;
 
-+// Grupo de rutas API con middleware CORS
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register API routes for your application. These
+| routes are loaded by the RouteServiceProvider within a group which
+| is assigned the "api" middleware group. Enjoy building your API!
+|
+*/
+
+// Grupo de rutas API con middleware CORS
 Route::middleware(['cors'])->group(function () {
     // Ruta de verificación de salud
     Route::get('/health', function () {

@@ -3,7 +3,7 @@ FROM composer:2 as vendor
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --optimize-autoloader --no-scripts
+RUN composer install --no-interaction --optimize-autoloader --no-scripts
 
 # Stage 2: Application
 FROM php:8.4-cli
@@ -37,19 +37,19 @@ COPY . .
 # Copy vendor directory from the vendor stage
 COPY --from=vendor /app/vendor/ /var/www/vendor/
 
-# Create .env file if it doesn't exist and generate key if needed
+# Copy .env.example to .env if it doesn't exist
 RUN if [ ! -f .env ]; then \
-        touch .env && \
-        echo "APP_NAME=Laravel" >> .env && \
-        echo "APP_ENV=local" >> .env && \
-        echo "APP_KEY=" >> .env && \
-        echo "APP_DEBUG=true" >> .env && \
-        echo "APP_URL=http://localhost" >> .env; \
-    fi && \
-    php artisan key:generate
+        cp .env.example .env; \
+    fi
+
+# Generate application key
+RUN php artisan key:generate
 
 # Expose port
 EXPOSE 10000
 
 # Start the application
-CMD php artisan serve --host=0.0.0.0 --port=10000
+CMD php artisan config:clear && \
+    php artisan cache:clear && \
+    php artisan view:clear && \
+    php artisan serve --host=0.0.0.0 --port=10000
