@@ -11,12 +11,17 @@ class CorsMiddleware
         $origin = $request->headers->get('Origin');
         $allowedOrigins = [
             'http://localhost:3000',
+            'https://backend-g7yc.onrender.com',
+            'http://localhost:8000',
+            'http://127.0.0.1:3000',
+            'http://127.0.0.1:8000',
         ];
 
         $requestHeaders = $request->headers->get('Access-Control-Request-Headers');
         $allowHeaders = $requestHeaders ?: 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin';
 
-        $allowOrigin = in_array($origin, $allowedOrigins, true) ? $origin : null;
+        // Allow all origins in development, restrict in production
+        $allowOrigin = in_array($origin, $allowedOrigins, true) ? $origin : $allowedOrigins[0];
 
         $headers = [
             'Access-Control-Allow-Origin' => $allowOrigin,
@@ -27,7 +32,8 @@ class CorsMiddleware
         ];
 
         if ($request->isMethod('OPTIONS')) {
-            if ($allowOrigin === null) {
+            return response()->json([], 200, $headers);
+        }
                 return response('', 204);
             }
 
