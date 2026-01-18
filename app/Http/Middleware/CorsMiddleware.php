@@ -6,41 +6,56 @@ use Closure;
 
 class CorsMiddleware
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return mixed
+     */
     public function handle($request, Closure $next)
     {
-        $origin = $request->headers->get('Origin');
+        // Lista de orígenes permitidos
         $allowedOrigins = [
             'http://localhost:3000',
-            'https://backend-g7yc.onrender.com',
-            'http://localhost:8000',
+            'http://localhost:3001',
             'http://127.0.0.1:3000',
-            'http://127.0.0.1:8000',
+            'http://127.0.0.1:3001',
+            'https://backend-g7yc.onrender.com',
+            // Agrega aquí otros dominios si es necesario
         ];
 
-        $requestHeaders = $request->headers->get('Access-Control-Request-Headers');
-        $allowHeaders = $requestHeaders ?: 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin';
+        // Obtener el origen de la petición
+        $origin = $request->header('Origin');
+        
+        // Verificar si el origen está permitido
+        if (in_array($origin, $allowedOrigins)) {
+            $headers = [
+                'Access-Control-Allow-Origin'      => $origin,
+                'Access-Control-Allow-Methods'     => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+                'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, Accept, Origin',
+                'Access-Control-Allow-Credentials' => 'true',
+                'Access-Control-Max-Age'           => '86400',
+                'Vary'                             => 'Origin'
+            ];
 
-        // Allow all origins in development, restrict in production
-        $allowOrigin = in_array($origin, $allowedOrigins, true) ? $origin : $allowedOrigins[0];
+            // Para peticiones OPTIONS, devolver solo los headers
+            if ($request->isMethod('OPTIONS')) {
+                return response()->json(['status' => 'success'], 200, $headers);
+            }
 
-        $headers = [
-            'Access-Control-Allow-Origin' => $allowOrigin,
-            'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            'Access-Control-Allow-Headers' => $allowHeaders,
-            'Access-Control-Allow-Credentials' => 'true',
-            'Vary' => 'Origin',
-        ];
+            // Para otras peticiones, continuar y agregar los headers
+            $response = $next($request);
+            
+            // Agregar los headers a la respuesta
+            foreach ($headers as $key => $value) {
+                $response->header($key, $value);
+            }
 
-        if ($request->isMethod('OPTIONS')) {
-            return response()->json([], 204, $headers);
+            return $response;
         }
 
-        $response = $next($request);
-
-        if ($allowOrigin !== null) {
-            $response->headers->add($headers);
-        }
-
-        return $response;
+        // Si el origen no está permitido, continuar sin modificar la respuesta
+        return $next($request);
     }
 }
