@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\EmailController;
 
-// Grupo de rutas API con middleware CORS
++// Grupo de rutas API con middleware CORS
 Route::middleware(['cors'])->group(function () {
     // Ruta de verificación de salud
     Route::get('/health', function () {

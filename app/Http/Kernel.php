@@ -15,7 +15,7 @@ class Kernel extends HttpKernel
      */
     protected $middleware = [
         // CORS middleware
-        \App\Http\Middleware\CorsMiddleware::class,
+        \App\Http\Middleware\Cors::class,
 
         // Tamaño de la solicitud
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
