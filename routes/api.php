@@ -15,7 +15,7 @@ use App\Http\Controllers\Api\EmailController;
 */
 
 // Grupo de rutas API con middleware CORS
-Route::middleware(['cors'])->group(function () {
+Route::middleware([\App\Http\Middleware\Cors::class])->group(function () {
     // Ruta de verificación de salud
     Route::get('/health', function () {
         return response()->json([
