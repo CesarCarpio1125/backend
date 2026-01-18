@@ -32,12 +32,7 @@ class CorsMiddleware
         ];
 
         if ($request->isMethod('OPTIONS')) {
-            return response()->json([], 200, $headers);
-        }
-                return response('', 204);
-            }
-
-            return response('', 204)->withHeaders($headers);
+            return response()->json([], 204, $headers);
         }
 
         $response = $next($request);
