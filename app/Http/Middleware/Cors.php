@@ -20,24 +20,39 @@ class Cors
         ];
 
         $origin = $request->headers->get('Origin');
-        $allowOrigin = in_array($origin, $allowedOrigins) ? $origin : '';
+        \Log::info('CORS Request Origin:', [
+            'origin' => $origin,
+            'method' => $request->method(),
+            'path' => $request->path(),
+            'headers' => $request->headers->all()
+        ]);
 
-        $headers = [
-            'Access-Control-Allow-Origin'      => $allowOrigin,
-            'Access-Control-Allow-Methods'     => 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
-            'Access-Control-Allow-Credentials' => 'true',
-            'Access-Control-Max-Age'           => '86400',
-            'Access-Control-Allow-Headers'     => 'Content-Type, Authorization, X-Requested-With, X-CSRF-TOKEN, X-XSRF-TOKEN, Accept, Origin'
-        ];
+        // Determinar si el origen es permitido
+        $isAllowedOrigin = $origin && in_array($origin, $allowedOrigins, true);
 
+        // Si es una solicitud preflight (OPTIONS)
         if ($request->isMethod('OPTIONS')) {
-            return response()->json(['method' => 'OPTIONS'], 200, $headers);
+            if (!$isAllowedOrigin) {
+                // Opcional: rechazar explícitamente orígenes no permitidos
+                return response('Forbidden', 403);
+            }
+
+            return response('', 204)
+                ->header('Access-Control-Allow-Origin', $origin)
+                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token, Origin, Authorization')
+                ->header('Access-Control-Allow-Credentials', 'true')
+                ->header('Vary', 'Origin');
         }
 
+        // Continuar con la solicitud normal
         $response = $next($request);
-        
-        foreach($headers as $key => $value) {
-            $response->headers->set($key, $value);
+
+        // Solo añadir cabeceras CORS si el origen es permitido
+        if ($isAllowedOrigin) {
+            $response->header('Access-Control-Allow-Origin', $origin)
+                ->header('Access-Control-Allow-Credentials', 'true')
+                ->header('Vary', 'Origin');
         }
 
         return $response;

@@ -14,29 +14,25 @@ use App\Http\Controllers\Api\EmailController;
 |
 */
 
-// Grupo de rutas API con middleware CORS
-Route::middleware([\App\Http\Middleware\Cors::class])->group(function () {
-    // Ruta de verificación de salud
-    Route::get('/health', function () {
-        return response()->json([
-            'status' => 'ok',
-            'message' => 'API funcionando correctamente',
-            'timestamp' => now()->toISOString(),
-            'environment' => app()->environment()
-        ]);
-    })->name('health');
+// Health check endpoint
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'message' => 'API is running',
+        'timestamp' => now()->toISOString(),
+        'environment' => app()->environment()
+    ]);
+})->name('health');
 
-    // Ruta de prueba
-    Route::post('/test', function () {
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Prueba POST exitosa',
-            'data' => request()->all(),
-            'timestamp' => now()->toISOString(),
-            'environment' => app()->environment()
-        ]);
-    })->name('test');
+// Test endpoint
+Route::post('/test', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Test endpoint is working',
+        'data' => request()->all(),
+        'timestamp' => now()->toISOString()
+    ]);
+})->name('test');
 
-    // Ruta para enviar correos
-    Route::post('/send-email', [EmailController::class, 'sendInquiry']);
-});
+// Email endpoint
+Route::post('/send-email', [EmailController::class, 'sendInquiry'])->name('send-email');
