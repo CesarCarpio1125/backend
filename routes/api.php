@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\EmailController;
-
+use App\Http\Controllers\Api\FileController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -36,3 +36,5 @@ Route::post('/test', function () {
 
 // Email endpoint
 Route::post('/send-email', [EmailController::class, 'sendInquiry'])->name('send-email');
+
+Route::post('/upload-chunk', [FileController::class, 'uploadChunk']);
