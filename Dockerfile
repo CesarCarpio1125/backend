@@ -31,6 +31,9 @@ RUN mkdir -p storage/framework/{sessions,views,cache} \
     && mkdir -p bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 
+# Copy custom PHP configuration
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
+
 # Copy application files
 COPY . .
 
