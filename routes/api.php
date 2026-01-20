@@ -34,6 +34,17 @@ Route::post('/test', function () {
     ]);
 })->name('test');
 
+
+Route::get('/php-info', function () {
+    return response()->json([
+        'post_max_size' => ini_get('post_max_size'),
+        'upload_max_filesize' => ini_get('upload_max_filesize'),
+        'memory_limit' => ini_get('memory_limit'),
+        'max_execution_time' => ini_get('max_execution_time')
+    ]);
+});
+
+
 // Email endpoint
 Route::post('/send-email', [EmailController::class, 'sendInquiry'])->name('send-email');
 
