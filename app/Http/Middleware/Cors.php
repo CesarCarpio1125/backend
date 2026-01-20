@@ -14,9 +14,7 @@ class Cors
             'http://localhost:3001',
             'http://127.0.0.1:3000',
             'http://127.0.0.1:3001',
-            'https://backend-g7yc.onrender.com',
-            'https://innosure.vercel.app',
-            'https://www.innosure.com.mx'
+            'https://backend-g7yc.onrender.com'
         ];
 
         $origin = $request->headers->get('Origin');
